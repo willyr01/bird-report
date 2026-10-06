@@ -1,0 +1,44 @@
+name: Build bird report
+
+on:
+  schedule:
+    # GitHub cron is UTC only, so local time shifts an hour across DST.
+    # 10:40 UTC -> 6:40am EDT / 5:40am EST
+    # 16:40 UTC -> 12:40pm EDT / 11:40am EST
+    # Both land in an acceptable window year-round, so no DST gating needed.
+    - cron: "40 10,16 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bird-report
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Generate report
+        env:
+          EBIRD_KEY: ${{ secrets.EBIRD_KEY }}
+        run: node generate.js --out docs/index.html
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- docs/index.html; then
+            echo "No change in report content."
+          else
+            git add docs/index.html
+            git commit -m "Bird report $(TZ=America/New_York date '+%Y-%m-%d %H:%M %Z')"
+            git push
+          fi

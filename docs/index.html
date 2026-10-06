@@ -1,0 +1,220 @@
+<title>West Orange Bird Report</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: a single column — summary, scale map, then one card per hotspot. */
+  :root {
+    --bg: #f6f6f3;
+    --surface: #ffffff;
+    --fg: #22251f;
+    --fg-dim: #5d6157;
+    --fg-faint: #8b8f84;
+    --line: #dcdcd4;
+    --accent: #9a6b1f;        /* ochre — fresh sightings */
+    --accent-soft: #c9a86a;
+    --cool: #5c7a86;          /* older sightings */
+    --warn: #8a5a2b;
+    --display: "Newsreader", Georgia, "Times New Roman", serif;
+    --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161814;
+      --surface: #1e211c;
+      --fg: #e8e9e2;
+      --fg-dim: #a9ad9f;
+      --fg-faint: #767a6d;
+      --line: #32362d;
+      --accent: #d9a94f;
+      --accent-soft: #8a7338;
+      --cool: #8fb0bd;
+      --warn: #d49a5c;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161814;
+    --surface: #1e211c;
+    --fg: #e8e9e2;
+    --fg-dim: #a9ad9f;
+    --fg-faint: #767a6d;
+    --line: #32362d;
+    --accent: #d9a94f;
+    --accent-soft: #8a7338;
+    --cool: #8fb0bd;
+    --warn: #d49a5c;
+    color-scheme: dark;
+  }
+
+  body { background: var(--bg); color: var(--fg); font-family: var(--body); line-height: 1.5; }
+  .wrap { max-width: 720px; margin: 0 auto; padding-inline: 18px; padding-block: 28px 56px; display: flex; flex-direction: column; gap: 26px; }
+
+  .masthead { display: flex; flex-direction: column; gap: 6px; border-bottom: 2px solid var(--fg); padding-bottom: 12px; }
+  .masthead h1 { font-family: var(--display); font-weight: 600; font-size: clamp(1.7rem, 6vw, 2.3rem); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+  .stamp { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-dim); }
+
+  .summary { display: flex; flex-wrap: wrap; gap: 10px 26px; font-size: 0.92rem; color: var(--fg-dim); }
+  .summary b { font-family: var(--mono); font-weight: 500; color: var(--fg); font-variant-numeric: tabular-nums; }
+
+  .map-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 3px; padding: 10px 10px 4px; }
+  .map { display: block; width: 100%; height: auto; max-width: 100%; }
+  .ring { fill: none; stroke: var(--line); stroke-width: 1; }
+  .ring-label { fill: var(--fg-faint); font-family: var(--mono); font-size: 10px; text-anchor: middle; }
+  .axis { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 5; }
+  .compass { fill: var(--fg-faint); font-family: var(--mono); font-size: 11px; text-anchor: middle; }
+  .home { fill: var(--fg); }
+  .home-label { fill: var(--fg-dim); font-family: var(--mono); font-size: 10px; }
+  .pin { stroke: var(--surface); stroke-width: 1.5; }
+  .pin-today { fill: var(--accent); }
+  .pin-recent { fill: var(--accent-soft); }
+  .pin-stale { fill: var(--cool); }
+  .pin-num { fill: var(--surface); font-family: var(--mono); font-size: 10px; font-weight: 500; text-anchor: middle; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.74rem; color: var(--fg-dim); font-family: var(--mono); padding: 8px 2px 6px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+  .loc { background: var(--surface); border: 1px solid var(--line); border-radius: 3px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .loc-head { display: flex; gap: 12px; align-items: flex-start; }
+  .pin-badge { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-family: var(--mono); font-size: 0.78rem; color: var(--surface); }
+  .pin-badge.pin-today { background: var(--accent); }
+  .pin-badge.pin-recent { background: var(--accent-soft); }
+  .pin-badge.pin-stale { background: var(--cool); }
+  .loc-id { min-width: 0; }
+  .loc-id h3 { font-family: var(--display); font-size: 1.12rem; font-weight: 600; margin: 0 0 2px; text-wrap: balance; }
+  .loc-meta { margin: 0; font-size: 0.8rem; color: var(--fg-dim); }
+  .km { font-family: var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; }
+
+  .sp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .sp-list li { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .sp-main { font-size: 0.98rem; font-weight: 500; }
+  .sp-sub { font-family: var(--display); font-size: 0.82rem; color: var(--fg-faint); }
+  .sp-meta { font-family: var(--mono); font-size: 0.74rem; color: var(--fg-dim); display: flex; flex-wrap: wrap; gap: 8px; }
+  .sp-meta a { color: var(--accent); }
+  .count { font-family: var(--mono); font-size: 0.82rem; color: var(--fg-dim); }
+  .meta { color: var(--fg-faint); }
+
+  .chip { display: inline-block; font-family: var(--mono); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid var(--line); border-radius: 2px; padding: 1px 5px; color: var(--fg-dim); }
+  .chip-warn { color: var(--warn); border-color: var(--warn); }
+
+  .empty { background: var(--surface); border: 1px solid var(--line); border-radius: 3px; padding: 26px 18px; text-align: center; }
+  .empty p { margin: 0 0 6px; }
+  .empty-sub { font-size: 0.86rem; color: var(--fg-dim); }
+
+  .foot { font-size: 0.76rem; color: var(--fg-faint); border-top: 1px solid var(--line); padding-top: 12px; }
+  .foot a { color: var(--fg-dim); }
+  a { color: var(--accent); }
+  a:focus-visible, .sp-meta a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <h1>Notable Birds Nearby</h1>
+    <p class="stamp">Tue, Oct 6, 12:24 PM · within 15 km of West Orange, NJ</p>
+  </header>
+
+  <div class="summary">
+    <span><b>5</b> locations</span>
+    <span><b>9</b> notable species</span>
+    <span><b>3</b> reported today</span>
+    <span>last <b>7</b> days</span>
+  </div>
+
+  <div class="map-panel">
+    <svg viewBox="0 0 680 560" role="img" aria-label="Map of notable bird sightings around West Orange, NJ" class="map"><circle cx="340" cy="280" r="72.2" class="ring"/><text x="340" y="202.8" class="ring-label">5 km</text><circle cx="340" cy="280" r="144.4" class="ring"/><text x="340" y="130.6" class="ring-label">10 km</text><circle cx="340" cy="280" r="216.7" class="ring"/><text x="340" y="58.3" class="ring-label">15 km</text><line x1="340" y1="23" x2="340" y2="537" class="axis"/><line x1="23" y1="280" x2="657" y2="280" class="axis"/><text x="340" y="15" class="compass">N</text><circle cx="340" cy="280" r="5" class="home"/><text x="350" y="284" class="home-label">home</text><circle cx="422.7" cy="96.0" r="9.4" class="pin pin-today"/><text x="422.7" y="100.0" class="pin-num">1</text><circle cx="543.2" cy="250.1" r="7.0" class="pin pin-today"/><text x="543.2" y="254.1" class="pin-num">2</text><circle cx="433.6" cy="282.1" r="9.4" class="pin pin-today"/><text x="433.6" y="286.1" class="pin-num">3</text><circle cx="311.9" cy="304.4" r="7.0" class="pin pin-stale"/><text x="311.9" y="308.4" class="pin-num">4</text><circle cx="208.4" cy="162.3" r="11.8" class="pin pin-stale"/><text x="208.4" y="166.3" class="pin-num">5</text></svg>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--accent)"></i>today</span>
+      <span><i class="dot" style="background:var(--accent-soft)"></i>1–2 days</span>
+      <span><i class="dot" style="background:var(--cool)"></i>older</span>
+      <span>larger circle = more species</span>
+    </div>
+  </div>
+
+  <article class="loc">
+      <header class="loc-head">
+        <span class="pin-badge pin-today">1</span>
+        <div class="loc-id">
+          <h3>Garret Mountain Reservation</h3>
+          <p class="loc-meta"><span class="km">14.0 km</span> · 2 notable species · last report 3h ago</p>
+        </div>
+      </header>
+      <ul class="sp-list"><li>
+        <div class="sp-main"><span class="sp-name">Connecticut Warbler</span> <span class="count">×1</span></div>
+        <div class="sp-sub"><em>Oporornis agilis</em></div>
+        <div class="sp-meta">3h ago <span class="meta">2 reports</span> <a href="https://ebird.org/checklist/S211" target="_blank" rel="noopener">checklist</a></div>
+      </li><li>
+        <div class="sp-main"><span class="sp-name">Yellow-breasted Chat</span> <span class="count">×1</span></div>
+        <div class="sp-sub"><em>Icteria virens</em></div>
+        <div class="sp-meta">5h ago <a href="https://ebird.org/checklist/S213" target="_blank" rel="noopener">checklist</a></div>
+      </li></ul>
+    </article><article class="loc">
+      <header class="loc-head">
+        <span class="pin-badge pin-today">2</span>
+        <div class="loc-id">
+          <h3>DeKorte Park</h3>
+          <p class="loc-meta"><span class="km">14.2 km</span> · 1 notable species · last report 7h ago</p>
+        </div>
+      </header>
+      <ul class="sp-list"><li>
+        <div class="sp-main"><span class="sp-name">Lesser Yellowlegs</span> <span class="count">×4</span></div>
+        <div class="sp-sub"><em>Tringa flavipes</em></div>
+        <div class="sp-meta">7h ago <a href="https://ebird.org/checklist/S220" target="_blank" rel="noopener">checklist</a></div>
+      </li></ul>
+    </article><article class="loc">
+      <header class="loc-head">
+        <span class="pin-badge pin-today">3</span>
+        <div class="loc-id">
+          <h3>Branch Brook Park</h3>
+          <p class="loc-meta"><span class="km">6.5 km</span> · 2 notable species · last report 9h ago</p>
+        </div>
+      </header>
+      <ul class="sp-list"><li>
+        <div class="sp-main"><span class="sp-name">Cackling Goose</span> <span class="count">×2</span></div>
+        <div class="sp-sub"><em>Branta hutchinsii</em></div>
+        <div class="sp-meta">9h ago <a href="https://ebird.org/checklist/S214" target="_blank" rel="noopener">checklist</a></div>
+      </li><li>
+        <div class="sp-main"><span class="sp-name">Eurasian Wigeon</span> <span class="count">×1</span> <span class="chip chip-warn">needs review</span></div>
+        <div class="sp-sub"><em>Mareca penelope</em></div>
+        <div class="sp-meta">yesterday <a href="https://ebird.org/checklist/S215" target="_blank" rel="noopener">checklist</a></div>
+      </li></ul>
+    </article><article class="loc">
+      <header class="loc-head">
+        <span class="pin-badge pin-stale">4</span>
+        <div class="loc-id">
+          <h3>South Mountain Reservation</h3>
+          <p class="loc-meta"><span class="km">2.6 km</span> · 1 notable species · last report 2 days ago</p>
+        </div>
+      </header>
+      <ul class="sp-list"><li>
+        <div class="sp-main"><span class="sp-name">Red-shouldered Hawk</span> <span class="count">×1</span></div>
+        <div class="sp-sub"><em>Buteo lineatus</em></div>
+        <div class="sp-meta">2 days ago <a href="https://ebird.org/checklist/S216" target="_blank" rel="noopener">checklist</a></div>
+      </li></ul>
+    </article><article class="loc">
+      <header class="loc-head">
+        <span class="pin-badge pin-stale">5</span>
+        <div class="loc-id">
+          <h3>Troy Meadows</h3>
+          <p class="loc-meta"><span class="km">12.2 km</span> · 3 notable species · last report 4 days ago</p>
+        </div>
+      </header>
+      <ul class="sp-list"><li>
+        <div class="sp-main"><span class="sp-name">American Bittern</span> <span class="count">×1</span></div>
+        <div class="sp-sub"><em>Botaurus lentiginosus</em></div>
+        <div class="sp-meta">4 days ago <a href="https://ebird.org/checklist/S217" target="_blank" rel="noopener">checklist</a></div>
+      </li><li>
+        <div class="sp-main"><span class="sp-name">Nelson&#39;s Sparrow</span> <span class="count">×3</span></div>
+        <div class="sp-sub"><em>Ammospiza nelsoni</em></div>
+        <div class="sp-meta">4 days ago <a href="https://ebird.org/checklist/S218" target="_blank" rel="noopener">checklist</a></div>
+      </li><li>
+        <div class="sp-main"><span class="sp-name">Sedge Wren</span> <span class="count">×1</span> <span class="chip chip-warn">needs review</span></div>
+        <div class="sp-sub"><em>Cistothorus stellaris</em></div>
+        <div class="sp-meta">4 days ago <a href="https://ebird.org/checklist/S219" target="_blank" rel="noopener">checklist</a></div>
+      </li></ul>
+    </article>
+
+  <footer class="foot">
+    Data from the <a href="https://ebird.org" target="_blank" rel="noopener">eBird</a> API, Cornell Lab of Ornithology.
+    "Notable" is eBird's regional rarity flag, not a personal life-list filter.
+    Reports marked <em>needs review</em> have not been confirmed by a regional editor yet.
+  </footer>
+</div>
