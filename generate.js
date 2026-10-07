@@ -5,7 +5,13 @@
 const fs = require("fs");
 
 // ---------------- config ----------------
-const HOME = { lat: 40.7713, lng: -74.2569, label: "West Orange, NJ" };
+// Search center comes from the environment so the coordinates are not committed
+// to this repo. Set HOME_LAT and HOME_LNG as repository secrets alongside
+// EBIRD_KEY. The --mock fallback below is a rough placeholder for rendering only.
+const HOME = {
+  lat: Number(process.env.HOME_LAT ?? 40.80),
+  lng: Number(process.env.HOME_LNG ?? -74.24),
+};
 const RADIUS_KM = 15;
 const DAYS_BACK = 7;
 const TZ = "America/New_York";
@@ -149,7 +155,7 @@ function buildMap(locs) {
   const rings = [];
   for (let r = step; r <= maxKm; r += step) rings.push(r);
 
-  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of notable bird sightings around ${HOME.label}" class="map">`;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of notable bird sightings, plotted by distance and direction from the search center" class="map">`;
 
   // rings + labels
   for (const r of rings) {
@@ -226,7 +232,7 @@ function buildHtml(locs, now) {
     <p class="empty-sub">Quiet stretches are normal outside migration. The next run will check again.</p>
   </div>`;
 
-  return `<title>West Orange Bird Report</title>
+  return `<title>Nearby Notable Birds</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
   /* Layout: a single column — summary, scale map, then one card per hotspot. */
@@ -337,7 +343,7 @@ function buildHtml(locs, now) {
 <div class="wrap">
   <header class="masthead">
     <h1>Notable Birds Nearby</h1>
-    <p class="stamp">${esc(stamp)} · within ${RADIUS_KM} km of ${esc(HOME.label)}</p>
+    <p class="stamp">${esc(stamp)} · within ${RADIUS_KM} km of the search center</p>
   </header>
 
   <div class="summary">
@@ -394,6 +400,10 @@ function mockData(now) {
   } else {
     const key = process.env.EBIRD_KEY;
     if (!key) { console.error("EBIRD_KEY not set"); process.exit(1); }
+    if (!process.env.HOME_LAT || !process.env.HOME_LNG) {
+      console.error("HOME_LAT / HOME_LNG not set — refusing to run live against the placeholder center.");
+      process.exit(1);
+    }
     obs = await fetchNotable(key);
   }
   const locs = groupByLocation(obs, now);

@@ -29,6 +29,8 @@ jobs:
       - name: Generate report
         env:
           EBIRD_KEY: ${{ secrets.EBIRD_KEY }}
+          HOME_LAT: ${{ secrets.HOME_LAT }}
+          HOME_LNG: ${{ secrets.HOME_LNG }}
         run: node generate.js --out docs/index.html
 
       - name: Commit if changed
